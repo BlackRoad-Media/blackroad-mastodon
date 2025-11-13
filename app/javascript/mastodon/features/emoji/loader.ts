@@ -7,7 +7,7 @@ import {
   loadLatestEtag,
   putLatestEtag,
 } from './database';
-import { toSupportedLocale, toSupportedLocaleOrCustom } from './locale';
+import { toSupportedLocale } from './locale';
 import type { CustomEmojiData, LocaleOrCustom } from './types';
 import { emojiLogger } from './utils';
 
@@ -15,7 +15,8 @@ const log = emojiLogger('loader');
 
 export async function importEmojiData(localeString: string) {
   const locale = toSupportedLocale(localeString);
-  const emojis = await fetchAndCheckEtag<CompactEmoji[]>(locale);
+  const path = await localeToPath(locale);
+  const emojis = await fetchAndCheckEtag<CompactEmoji[]>(locale, path);
   if (!emojis) {
     return;
   }
@@ -25,7 +26,10 @@ export async function importEmojiData(localeString: string) {
 }
 
 export async function importCustomEmojiData() {
-  const emojis = await fetchAndCheckEtag<CustomEmojiData[]>('custom');
+  const emojis = await fetchAndCheckEtag<CustomEmojiData[]>(
+    'custom',
+    'api/v1/custom_emojis',
+  );
   if (!emojis) {
     return;
   }
@@ -35,19 +39,13 @@ export async function importCustomEmojiData() {
 
 async function fetchAndCheckEtag<ResultType extends object[]>(
   localeOrCustom: LocaleOrCustom,
+  path: string,
 ): Promise<ResultType | null> {
-  const locale = toSupportedLocaleOrCustom(localeOrCustom);
-
   // Use location.origin as this script may be loaded from a CDN domain.
   const url = new URL(location.origin);
-  if (locale === 'custom') {
-    url.pathname = '/api/v1/custom_emojis';
-  } else {
-    const modulePath = await localeToPath(locale);
-    url.pathname = modulePath;
-  }
+  url.pathname = path;
 
-  const oldEtag = await loadLatestEtag(locale);
+  const oldEtag = await loadLatestEtag(localeOrCustom);
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
