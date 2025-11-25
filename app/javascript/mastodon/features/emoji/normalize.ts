@@ -12,6 +12,7 @@ import {
   EMOJIS_WITH_LIGHT_BORDER,
 } from './constants';
 import type { CustomEmojiMapArg, ExtraCustomEmojiMap } from './types';
+import { isCustomEmoji } from './utils';
 
 // Misc codes that have special handling
 const SKIER_CODE = 0x26f7;
@@ -23,12 +24,19 @@ const SPEECH_BUBBLE_CODE = 0x1f5e8;
 const MS_CLAUS_CODE = 0x1f936;
 
 export function emojiToUnicodeHex(emoji: string): string {
+  if (isCustomEmoji(emoji)) {
+    return emoji;
+  }
   const codes: number[] = [];
   for (const char of emoji) {
     const code = char.codePointAt(0);
     if (code !== undefined) {
       codes.push(code);
     }
+  }
+  // Strip trailing variation selector.
+  if (codes.at(-1) === VARIATION_SELECTOR_CODE) {
+    codes.pop();
   }
   return hexNumbersToString(codes);
 }
